@@ -18,6 +18,7 @@ def main():
     Price = PriceStream(config.symbol)
     Price.subscribe_window(window)
     Bot = GridBot(config, Price)
+    Bot.subscribe_window(window)
 
     move_grid = False
 
@@ -28,17 +29,17 @@ def main():
             sys.exit()
 
         if event == 'Place':
-            if not Bot.isActive:
+            if not Bot.isActive():
                 Bot.place()
 
         if event == 'Cancel':
-            if Bot.isActive:
+            if Bot.isActive():
                 Bot.cancel()
 
         if event == 'Save':
             config.save(values)
             config.draw_to_window(window)
-            if Bot.isActive:
+            if Bot.isActive():
                 Bot.cancel()
                 Bot = GridBot(config, Price)
 

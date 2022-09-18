@@ -8,11 +8,11 @@ import time
 
 class OrderManager:
     def __init__(self, symbol):
+        self.symbol = symbol
+        self.orders = {}
         self.client = Client(credentials['key'], credentials['secret'])
         self.client_creation_time = time.time()
         self.client_UPDATE_INTERVAL = 60
-        self.symbol = symbol
-        self.orders = {}
         self.update_thread = threading.Thread(target=asyncio.run, args=(self._async_update(),))
         self.update_thread.daemon = True
         self.update_thread.start()
@@ -24,7 +24,6 @@ class OrderManager:
         side = order['side'].lower()
         self.orders[id] = {'status':status,
                            'side':side}
-
 
     async def _async_update(self):
         async_client = await AsyncClient.create(credentials['key'], credentials['secret'])
@@ -52,8 +51,8 @@ class OrderManager:
     def limitSell(self, volume, price):
         self._reload_client()
         order = self.client.order_limit_sell(symbol=self.symbol,
-                                            quantity=volume,
-                                            price=price)
+                                             quantity=volume,
+                                             price=price)
         self._append_order(order)
         return order['orderId']
 
@@ -63,6 +62,7 @@ class OrderManager:
     def cancel(self, id):
         self._reload_client()
         self.client.cancel_order(symbol=self.symbol, orderId=id)
+        del self.orders[id]
 
     def cancelAll(self):
         for id in self.orders:

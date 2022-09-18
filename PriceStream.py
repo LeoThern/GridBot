@@ -13,7 +13,7 @@ class PriceStream:
         self.update_thread.daemon = True
         self.update_thread.start()
 
-    def get_price(self):
+    def get(self):
         return self.price
 
     def subscribe_window(self, window):

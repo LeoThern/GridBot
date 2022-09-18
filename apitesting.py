@@ -1,10 +1,11 @@
-from PriceStream import PriceStream
+from apiKeySecret import credentials
 
-import time
+from binance import Client
 
+client = Client(credentials['key'], credentials['secret'], testnet=True)
 
-pS = PriceStream('APEBUSD')
+order = client.order_limit_buy(symbol='ETHUSDT',
+                                quantity=2,
+                                price=5000)
 
-while True:
-    print(pS.get_price())
-    time.sleep(1)
+print(order)

@@ -1,140 +1,90 @@
 from OrderManager import OrderManager
-from apiKeySecret import credentials
 
-from binance import AsyncClient, BinanceSocketManager
-
+from time import sleep
+import threading
 
 class GridBot:
     def __init__(self, config, priceStream):
         self.config = config
         self.pS = priceStream
         self.OM = OrderManager(self.config.symbol)
-        self.isActive = False
-        self.current_price = None
-        self.Grid = GridCalculator(self.config.upper_bound,
-                                   self.config.lower_bound,
-                                   self.config.line_count)
-        self.Grid.set_baseVolumePerLine(self.config.base_volume_line)
-        self.guiValues = None
-        self.orderIds = {}
+        self.gridPrices = []
+        self.gridOrders = {}
         self.window = None
+        self.update_thread = threading.Thread(target=self._update_loop)
+        self.update_thread.daemon = True
+        self.update_thread.start()
 
     def subscribe_window(self, window):
         self.window = window
 
-    async def async_update(self):
-        async_client = await AsyncClient.create(credentials['key'], credentials['secret'])
-        bm = BinanceSocketManager(async_client)
-        async with bm.kline_socket(symbol=self.config.symbol) as stream:
-            while True:
-                data = await stream.recv()
-                ohlc = data['k']
-                close = float(ohlc['c'])
-                self.current_price = close
-                self.Grid.update_current_price(close)
-                if not self.guiValues or self.Grid.orders_changed:
-                    if self.isActive:
-                        self._check_orders_match_grid()
-                    values = self.Grid.get_guiValues()
-                    self.guiValues = values
-                else:
-                    values = self.guiValues
-                values['price'] = close
-                self.window.write_event_value('UPDATE-PRICE', values)
-
-    def _replace_if_filled(self):
-        for i in range(self.config.line_count):
-            if self.OM.get_status(self.orderIds[i]) == 'filled':
-                self.OM.cancel(self.orderIds[i])
-                self._place_order(i)
-
+    def isActive(self):
+        return bool(self.gridPrices)
 
     def place(self):
-        for i in range(self.config.line_count):
-            self._place_order(i)
-        self.isActive = True
+        self.gridPrices = self._calculate_prices(self.config.upper_bound,
+                                                self.config.lower_bound,
+                                                self.config.line_count)
+        for price in self.gridPrices:
+            self._place_gridLine(price)
 
     def cancel(self):
+        self.gridPrices = []
         self.OM.cancelAll()
-        self.isActive = False
 
-    def _place_order(self, index):
-        side = self.Grid.get_side(index)
-        price = self.Grid.get_price(index)
+    def _update_loop(self):
+        UPDATE_TIMEOUT = 2
+        while True:
+            sleep(UPDATE_TIMEOUT)
+            self._replace_orders()
+            if self.window:
+                values = self._guiValues()
+                self.window.write_event_value('UPDATE-VALUES', values)
 
+    def _replace_orders(self):
+        for price in self.gridPrices:
+            id = self.gridOrders[price]
+            if self.OM.get_status(id) == 'filled':
+                self.OM.cancel(id)
+                self._place_gridLine(price)
+
+    def _place_gridLine(self, linePrice):
+        side, volume = self._side_volume_of_line(linePrice)
         if side == 'buy':
-            volume = self.Grid.get_baseVolume(index)
-            id = self.OM.limitBuy(volume, price)
-        if side == 'sell':
-            volume = self.Grid.get_quoteVolume(index)
-            id = self.OM.limitSell(volume, price)
-        self.orderIds[index] = id
+            id = self.OM.limitBuy(volume, linePrice)
+        else:
+            id = self.OM.limitSell(volume, linePrice)
+        self.gridOrders[linePrice] = id
 
-
-
-class GridCalculator:
-    def __init__(self, upper_bound, lower_bound, line_count):
-        self.grid_range = upper_bound - lower_bound
-        grid_line_height = self.grid_range / (line_count - 1)
+    def _calculate_prices(self, upper_bound, lower_bound, line_count):
+        grid_range = upper_bound - lower_bound
+        grid_line_height = grid_range / (line_count - 1)
         prices = [lower_bound + (grid_line_height * i) for i in range(line_count)]
         prices[-1] = upper_bound  # counter rounding error
-        self.grid = []
+        return prices
+
+    def _side_volume_of_line(self, linePrice):
+        side = 'buy' if linePrice < self.pS.get() else 'sell'
+        base_volume = self.config.base_volume_line
+        quote_volume = base_volume * linePrice
+        return side, quote_volume if side == 'buy' else base_volume
+
+    def _guiValues(self):
+        buy_count, sell_count = 0, 0
+        base_volume, quote_volume = 0.0, 0.0
+        prices = self._calculate_prices(self.config.upper_bound,
+                                        self.config.lower_bound,
+                                        self.config.line_count)
         for price in prices:
-            self.grid.append({'price':price,
-                              'side':None,
-                              'baseVolume':None,
-                              'quoteVolume':None})
-        self.current_price = None
-        self.orders_changed = False
-
-    def set_quoteVolumePerLine(self, quote_volume):
-        for order in self.grid:
-            order['quoteVolume'] = quote_volume
-            order['baseVolume'] = quote_volume / order['price']
-
-    def set_baseVolumePerLine(self, base_volume):
-        for order in self.grid:
-            order['baseVolume'] = base_volume
-            order['quoteVolume'] = base_volume * order['price']
-
-    def update_current_price(self, current_price):
-        self.current_price = current_price
-        self.orders_changed = False
-
-        for order in self.grid:
-            if order['price'] <= current_price:
-                if order['side'] != 'buy':
-                    order['side'] = 'buy'
-                    self.orders_changed = True
-            if order['price'] > current_price:
-                if order['side'] != 'sell':
-                    order['side'] = 'sell'
-                    self.orders_changed = True
-
-    def get_guiValues(self):
-        assert self.current_price, 'cant get order data without price'
-        sell_count, buy_count, base_volume, quote_volume = 0, 0, 0, 0
-        for order in self.grid:
-            if order['side'] == 'buy':
+            side, volume = self._side_volume_of_line(price)
+            if side == 'buy':
                 buy_count += 1
-                quote_volume += order['quoteVolume']
-            if order['side'] == 'sell':
+                quote_volume += volume
+            else:
                 sell_count += 1
-                base_volume += order['baseVolume']
+                base_volume += volume
 
-        return {'sell_count':sell_count,
-                'buy_count':buy_count,
+        return {'buy_count':buy_count,
+                'sell_count':sell_count,
                 'base_volume':base_volume,
                 'quote_volume':quote_volume,}
-
-    def get_price(self, index):
-        return self.grid[index]['price']
-
-    def get_side(self, index):
-        return self.grid[index]['side']
-
-    def get_quoteVolume(self, index):
-        return self.grid[index]['quoteVolume']
-
-    def get_baseVolume(self, index):
-        return self.grid[index]['baseVolume']
