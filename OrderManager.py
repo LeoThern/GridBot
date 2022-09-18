@@ -17,22 +17,24 @@ class OrderManager:
         self.update_thread.daemon = True
         self.update_thread.start()
 
-    def _append_order(self, order):
-        status_conversion = {'NEW':'open'}
-        status = status_conversion[order['status']]
-        id = order['orderId']
-        side = order['side'].lower()
-        self.orders[id] = {'status':status,
-                           'side':side}
-
     async def _async_update(self):
         async_client = await AsyncClient.create(credentials['key'], credentials['secret'])
         bm = BinanceSocketManager(async_client)
         async with bm.user_socket() as stream:
             while True:
                 data = await stream.recv()
-                print(data)
-                #implement updating
+                if data['e'] == 'executionReport':
+                    self._update_order(data)
+
+    def _update_order(self, report):
+        status_conversion = {'NEW': 'open',
+                             'FILLED': 'filled',
+                             'PARTIALLY_FILLED': 'p_filled'}
+        if not report['X'] in status_conversion:
+            return
+        status = status_conversion[report['X']]
+        id = report['i']
+        self.orders[id]['status'] = status
 
     def _reload_client(self):
         current_time = time.time()
@@ -55,6 +57,12 @@ class OrderManager:
                                              price=price)
         self._append_order(order)
         return order['orderId']
+
+    def _append_order(self, order):
+        id = order['orderId']
+        side = order['side'].lower()
+        self.orders[id] = {'status':'open',
+                           'side': side}
 
     def get_status(self, id):
         return self.orders[id]['status']
