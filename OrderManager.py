@@ -24,7 +24,8 @@ class OrderManager:
             while True:
                 data = await stream.recv()
                 if data['e'] == 'executionReport':
-                    self._update_order(data)
+                    if data['i'] in self.orders:
+                        self._update_order(data)
 
     def _update_order(self, report):
         status_conversion = {'NEW': 'open',
@@ -70,7 +71,6 @@ class OrderManager:
     def cancel(self, id):
         self._reload_client()
         self.client.cancel_order(symbol=self.symbol, orderId=id)
-        del self.orders[id]
 
     def cancelAll(self):
         for id in self.orders:

@@ -35,7 +35,6 @@ def main():
         if event == 'Cancel':
             if Bot.isActive():
                 Bot.cancel()
-
         if event == 'Save':
             config.save(values)
             config.draw_to_window(window)
