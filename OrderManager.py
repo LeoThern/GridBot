@@ -3,8 +3,13 @@ from apiKeySecret import credentials
 from binance import Client
 from binance import AsyncClient, BinanceSocketManager
 import threading
+import datetime
 import asyncio
 import time
+
+def time_prefix():
+    current_time = datetime.datetime.now().strftime("%H:%M")
+    return f"[{current_time}]"
 
 class OrderManager:
     def __init__(self, symbol):
@@ -35,6 +40,7 @@ class OrderManager:
             return
         status = status_conversion[report['X']]
         id = report['i']
+        print(time_prefix(), f"{self.orders[id]['side'].upper()} Order Status: {status}")
         self.orders[id]['status'] = status
 
     def _reload_client(self):
@@ -49,6 +55,7 @@ class OrderManager:
                                             quantity=volume,
                                             price=price)
         self._append_order(order)
+        print(time_prefix(), f"Placing Limit Buy for {volume} at {price}")
         return order['orderId']
 
     def limitSell(self, volume, price):
@@ -57,6 +64,7 @@ class OrderManager:
                                              quantity=volume,
                                              price=price)
         self._append_order(order)
+        print(time_prefix(), f"Placing Limit Sell for {volume} at {price}")
         return order['orderId']
 
     def _append_order(self, order):
@@ -68,10 +76,14 @@ class OrderManager:
     def get_status(self, id):
         return self.orders[id]['status']
 
+    def get_side(self, id):
+        return self.orders[id]['side']
+
     def cancel(self, id):
         self._reload_client()
         self.client.cancel_order(symbol=self.symbol, orderId=id)
 
     def cancelAll(self):
         for id in self.orders:
-            self.cancel(id)
+            if self.get_status(id) == 'open':
+                self.cancel(id)

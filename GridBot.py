@@ -52,8 +52,11 @@ class GridBot:
         for price in self.gridPrices:
             id = self.gridOrders[price]
             if self.OM.get_status(id) == 'filled':
-                self.OM.cancel(id)
-                self._place_gridLine(price)
+                if self.OM.get_side(id) == 'buy':
+                    id = self.OM.limitSell(self.config.base_volume_line, price)
+                else:
+                    id = self.OM.limitBuy(self.config.base_volume_line, price)
+                self.gridOrders[price] = id
 
     def _place_gridLine(self, linePrice):
         side, volume = self._side_volume_of_line(linePrice)
@@ -74,7 +77,7 @@ class GridBot:
         side = 'buy' if linePrice < self.pS.get() else 'sell'
         base_volume = self.config.base_volume_line
         quote_volume = base_volume * linePrice
-        return side, round(quote_volume if side == 'buy' else base_volume, 6)
+        return side, round(base_volume, 6)
 
     def _guiValues(self):
         buy_count, sell_count = 0, 0
@@ -86,7 +89,7 @@ class GridBot:
             side, volume = self._side_volume_of_line(price)
             if side == 'buy':
                 buy_count += 1
-                quote_volume += volume
+                quote_volume += volume * price
             else:
                 sell_count += 1
                 base_volume += volume
