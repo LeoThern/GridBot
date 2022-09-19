@@ -70,8 +70,12 @@ class OrderManager:
     def _append_order(self, order):
         id = order['orderId']
         side = order['side'].lower()
-        self.orders[id] = {'status':'open',
-                           'side': side}
+        if order['status'] == 'NEW':
+            self.orders[id] = {'status':'open',
+                            'side': side}
+        else:
+            self.orders[id] = {'status': 'rejected',
+                               'side': side}
 
     def get_status(self, id):
         return self.orders[id]['status']

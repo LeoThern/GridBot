@@ -71,13 +71,13 @@ class GridBot:
         grid_line_height = grid_range / (line_count - 1)
         prices = [lower_bound + (grid_line_height * i) for i in range(line_count)]
         prices[-1] = upper_bound  # counter rounding error
-        return [round(price, 6) for price in prices]
+        return [round(price, 8) for price in prices]
 
     def _side_volume_of_line(self, linePrice):
         side = 'buy' if linePrice < self.pS.get() else 'sell'
         base_volume = self.config.base_volume_line
         quote_volume = base_volume * linePrice
-        return side, round(base_volume, 6)
+        return side, round(base_volume, 8)
 
     def _guiValues(self):
         buy_count, sell_count = 0, 0
