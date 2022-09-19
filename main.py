@@ -41,7 +41,9 @@ def main():
             config.draw_to_window(window)
             if Bot.isActive():
                 Bot.cancel()
-                Bot = GridBot(config, Price)
+            Price = PriceStream(config.symbol)
+            Price.subscribe_window(window)
+            Bot = GridBot(config, Price)
 
         if event == 'move_grid':
             pass
