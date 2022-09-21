@@ -10,8 +10,12 @@ class GridBot:
         self.OM = OrderManager(self.config.symbol)
         self.gridPrices = []
         self.gridOrders = {}
+        self.stats = {'total_buys':0,
+                      'total_sells':0,
+                      'base_pl':0.0,
+                      'quote_pl':0.0}
         self.window = None
-        self.lock = threading.Lock()
+        self.gridPrices_lock = threading.Lock()
         self.update_thread = threading.Thread(target=self._update_loop)
         self.update_thread.daemon = True
         self.update_thread.start()
@@ -23,38 +27,40 @@ class GridBot:
         return bool(self.gridPrices)
 
     def place(self):
-        self.lock.acquire()
+        self.gridPrices_lock.acquire()
         self.gridPrices = self._calculate_prices(self.config.upper_bound,
                                                 self.config.lower_bound,
                                                 self.config.line_count)
         for price in self.gridPrices:
             self._place_gridLine(price)
-        self.lock.release()
+        self.gridPrices_lock.release()
 
     def cancel(self):
-        self.lock.acquire()
+        self.gridPrices_lock.acquire()
         self.gridPrices = []
         self.OM.cancelAll()
-        self.lock.release()
+        self.gridPrices_lock.release()
 
     def _update_loop(self):
         UPDATE_TIMEOUT = 2
         while True:
             sleep(UPDATE_TIMEOUT)
-            self.lock.acquire()
+            self.gridPrices_lock.acquire()
             self._replace_orders()
             if self.window and self.pS.get() != 0:
                 values = self._guiValues()
                 self.window.write_event_value('UPDATE-VALUES', values)
-            self.lock.release()
+            self.gridPrices_lock.release()
 
     def _replace_orders(self):
         for price in self.gridPrices:
             id = self.gridOrders[price]
             if self.OM.get_status(id) == 'filled':
                 if self.OM.get_side(id) == 'buy':
+                    self.stats['total_buys'] += 1
                     id = self.OM.limitSell(self.config.base_volume_line, price)
                 else:
+                    self.stats['total_sells'] += 1
                     id = self.OM.limitBuy(self.config.base_volume_line, price)
                 self.gridOrders[price] = id
 
@@ -94,7 +100,8 @@ class GridBot:
                 sell_count += 1
                 base_volume += volume
 
+        quote_volume = round(quote_volume, 3)
         return {'buy_count':buy_count,
                 'sell_count':sell_count,
                 'base_volume':base_volume,
-                'quote_volume':quote_volume,}
+                'quote_volume':quote_volume,} | self.stats

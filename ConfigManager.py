@@ -6,6 +6,7 @@ class ConfigManager:
         self.cp = configparser.ConfigParser()
         self.cp.read(self.filename)
         self._create_member_access()
+        self.symbol_changed = False
         #self.gui_settings_fields = {}
 
     def _create_member_access(self):
@@ -26,6 +27,10 @@ class ConfigManager:
         window['s_base_volume_line'].update(self.cp['Profile1']['base_volume_line'])
 
     def save(self, values):
+        if self.symbol == values['s_symbol']:
+            self.symbol_changed = False
+        else:
+            self.symbol_changed = True
         self.cp['Profile1']['symbol'] = values['s_symbol']
         self.cp['Profile1']['upper_bound'] = values['s_upper_bound']
         self.cp['Profile1']['lower_bound'] = values['s_lower_bound']

@@ -39,11 +39,18 @@ def main():
         if event == 'Save':
             config.save(values)
             config.draw_to_window(window)
+            if config.symbol_changed:
+                Price = PriceStream(config.symbol)
+                Price.subscribe_window(window)
             if Bot.isActive():
                 Bot.cancel()
-            Price = PriceStream(config.symbol)
-            Price.subscribe_window(window)
             Bot = GridBot(config, Price)
+
+        if event == 'Reset':
+            Bot.stats = {'total_buys': 0,
+                      'total_sells': 0,
+                      'base_pl': 0.0,
+                      'quote_pl': 0.0}
 
         if event == 'move_grid':
             pass
@@ -63,7 +70,7 @@ if __name__ == '__main__':
     except BinanceAPIException as e:
         sg.popup('- Error with Binance API -', e)
     except Exception:
-        current_time = datetime.datetime.now().strftime("_%H_%M")
-        with open(f"log{current_time}", 'w') as f:
+        current_time = datetime.datetime.now().strftime("%H_%M")
+        with open(f"log_{current_time}", 'w') as f:
             f.write(traceback.format_exc())
         sys.exit()

@@ -51,31 +51,35 @@ class OrderManager:
 
     def limitBuy(self, volume, price):
         self._reload_client()
+        print(time_prefix(), f"Trying to place Limit Buy for {volume} at {price}")
         order = self.client.order_limit_buy(symbol=self.symbol,
                                             quantity=volume,
                                             price=price)
-        self._append_order(order)
-        print(time_prefix(), f"Placing Limit Buy for {volume} at {price}")
-        return order['orderId']
+        if order['status'] == 'NEW':
+            self._append_order(order)
+            return order['orderId']
+        else:
+            time.sleep(2)
+            return self.limitBuy(volume, price)
 
     def limitSell(self, volume, price):
         self._reload_client()
+        print(time_prefix(), f"Trying to place Limit Sell for {volume} at {price}")
         order = self.client.order_limit_sell(symbol=self.symbol,
                                              quantity=volume,
                                              price=price)
-        self._append_order(order)
-        print(time_prefix(), f"Placing Limit Sell for {volume} at {price}")
-        return order['orderId']
+        if order['status'] == 'NEW':
+            self._append_order(order)
+            return order['orderId']
+        else:
+            time.sleep(2)
+            return self.limitSell(volume, price)
 
     def _append_order(self, order):
         id = order['orderId']
         side = order['side'].lower()
-        if order['status'] == 'NEW':
-            self.orders[id] = {'status':'open',
+        self.orders[id] = {'status':'open',
                             'side': side}
-        else:
-            self.orders[id] = {'status': 'rejected',
-                               'side': side}
 
     def get_status(self, id):
         return self.orders[id]['status']
