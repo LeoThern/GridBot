@@ -46,12 +46,6 @@ def main():
                 Bot.cancel()
             Bot = GridBot(config, Price)
 
-        if event == 'Reset':
-            Bot.stats = {'total_buys': 0,
-                      'total_sells': 0,
-                      'base_pl': 0.0,
-                      'quote_pl': 0.0}
-
         if event == 'move_grid':
             pass
 

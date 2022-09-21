@@ -22,8 +22,7 @@ layoutSettingsTab = [[sg.Text('Symbol: '), sg.Push(), sg.InputText(key='s_symbol
 layoutStatsTab = [[sg.Push(), sg.Text('Buy\'s executed:'), sg.Text('', key='total_buys'), sg.Push()],
                   [sg.Push(), sg.Text('Sell\'s executed:'), sg.Text('', key='total_sells'), sg.Push()],
                   [sg.Push(), sg.Text('Base P/L:'), sg.Text('', key='base_pl'), sg.Push()],
-                  [sg.Push(), sg.Text('Quote P/L:'), sg.Text('', key='quote_pl'), sg.Push()],
-                  [sg.Push(), sg.Button('Reset'), sg.Push()],]
+                  [sg.Push(), sg.Text('Quote P/L:'), sg.Text('', key='quote_pl'), sg.Push()],]
 
 layout = [[sg.TabGroup([[sg.Tab('Main', layoutMainTab),
                          sg.Tab('Settings', layoutSettingsTab),
