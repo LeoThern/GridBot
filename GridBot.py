@@ -10,6 +10,7 @@ class GridBot:
         self.OM = OrderManager(self.config.symbol)
         self.gridPrices = []
         self.gridOrders = {}
+        self.pendingLine = 0.0
         self.stats = {'total_buys':0,
                       'total_sells':0,
                       'base_pl':0.0,
@@ -28,6 +29,7 @@ class GridBot:
 
     def place(self):
         self.gridPrices_lock.acquire()
+        self.entry = self.pS.get()
         self.gridPrices = self._calculate_prices(self.config.upper_bound,
                                                 self.config.lower_bound,
                                                 self.config.line_count)
@@ -54,15 +56,17 @@ class GridBot:
 
     def _replace_orders(self):
         for price in self.gridPrices:
+            if price == self.pendingLine:
+                continue
             id = self.gridOrders[price]
             if self.OM.get_status(id) == 'filled':
                 if self.OM.get_side(id) == 'buy':
                     self.stats['total_buys'] += 1
-                    id = self.OM.limitSell(self.config.base_volume_line, price)
                 else:
                     self.stats['total_sells'] += 1
-                    id = self.OM.limitBuy(self.config.base_volume_line, price)
-                self.gridOrders[price] = id
+                if self.pendingLine != 0.0:
+                    self._place_gridLine(self.pendingLine)
+                self.pendingLine = price
 
     def _place_gridLine(self, linePrice):
         side, volume = self._side_volume_of_line(linePrice)
@@ -77,7 +81,7 @@ class GridBot:
         grid_line_height = grid_range / (line_count - 1)
         prices = [lower_bound + (grid_line_height * i) for i in range(line_count)]
         prices[-1] = upper_bound  # counter rounding error
-        return [round(price, 8) for price in prices]
+        return [round(price, 3) for price in prices]
 
     def _side_volume_of_line(self, linePrice):
         side = 'buy' if linePrice < self.pS.get() else 'sell'
@@ -92,6 +96,8 @@ class GridBot:
                                         self.config.lower_bound,
                                         self.config.line_count)
         for price in prices:
+            if price == self.pendingLine:
+                continue
             side, volume = self._side_volume_of_line(price)
             if side == 'buy':
                 buy_count += 1
