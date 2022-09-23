@@ -13,6 +13,7 @@ layoutMainTab = [[sg.Push(), sg.Text('Asset:'), sg.Text('', key='symbol'), sg.Pu
                  [sg.Push(), sg.Text('Move Grid:'), sg.Button('Off', button_color=('white', 'red'), key='move_grid'), sg.Push()],]
 
 layoutSettingsTab = [[sg.Text('Symbol: '), sg.Push(), sg.InputText(key='s_symbol')],
+                     [sg.Text('Nachkommastellen: '), sg.Push(), sg.InputText(key='s_tick_size')],
                      [sg.Text('Upper Bound: '), sg.Push(), sg.InputText(key='s_upper_bound')],
                      [sg.Text('Lower Bound: '), sg.Push(), sg.InputText(key='s_lower_bound')],
                      [sg.Text('Line Count: '), sg.Push(), sg.InputText(key='s_line_count')],
