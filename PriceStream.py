@@ -28,5 +28,6 @@ class PriceStream:
                 ohlc = data['k']
                 close = float(ohlc['c'])
                 self.price = close
+
                 if self.window:
                     self.window.write_event_value('PRICE-STREAM', self.price)

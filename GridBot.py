@@ -9,14 +9,10 @@ class GridBot:
         self.pS = priceStream
         self.OM = OrderManager(self.config.symbol)
         self.gridPrices = []
+        self.gridPrices_lock = threading.Lock()
         self.gridOrders = {}
         self.pendingLine = 0.0
-        self.stats = {'total_buys':0,
-                      'total_sells':0,
-                      'base_pl':0.0,
-                      'quote_pl':0.0}
         self.window = None
-        self.gridPrices_lock = threading.Lock()
         self.update_thread = threading.Thread(target=self._update_loop)
         self.update_thread.daemon = True
         self.update_thread.start()
@@ -29,18 +25,17 @@ class GridBot:
 
     def place(self):
         self.gridPrices_lock.acquire()
-        self.entry = self.pS.get()
         self.gridPrices = self._calculate_prices(self.config.upper_bound,
-                                                self.config.lower_bound,
-                                                self.config.line_count)
+                                                 self.config.lower_bound,
+                                                 self.config.line_count)
         for price in self.gridPrices:
             self._place_gridLine(price)
         self.gridPrices_lock.release()
 
     def cancel(self):
         self.gridPrices_lock.acquire()
-        self.gridPrices = []
         self.OM.cancelAll()
+        self.gridPrices = []
         self.gridPrices_lock.release()
 
     def _update_loop(self):
@@ -54,22 +49,24 @@ class GridBot:
                 self.window.write_event_value('UPDATE-VALUES', values)
             self.gridPrices_lock.release()
 
+            if self.config.upper_sl > 0:
+                if self.pS.get() > self.config.upper_sl:
+                    self.cancel()
+
     def _replace_orders(self):
         for price in self.gridPrices:
             if price == self.pendingLine:
                 continue
             id = self.gridOrders[price]
             if self.OM.get_status(id) == 'filled':
-                if self.OM.get_side(id) == 'buy':
-                    self.stats['total_buys'] += 1
-                else:
-                    self.stats['total_sells'] += 1
+
                 if self.pendingLine != 0.0:
                     self._place_gridLine(self.pendingLine)
                 self.pendingLine = price
 
     def _place_gridLine(self, linePrice):
-        side, volume = self._side_volume_of_line(linePrice)
+        side = 'buy' if linePrice < self.pS.get() else 'sell'
+        volume = self.config.base_volume_line
         if side == 'buy':
             id = self.OM.limitBuy(volume, linePrice)
         else:
@@ -83,22 +80,19 @@ class GridBot:
         prices[-1] = upper_bound  # counter rounding error
         return [round(price, self.config.tick_size) for price in prices]
 
-    def _side_volume_of_line(self, linePrice):
-        side = 'buy' if linePrice < self.pS.get() else 'sell'
-        base_volume = self.config.base_volume_line
-        quote_volume = base_volume * linePrice
-        return side, round(base_volume, 8)
-
     def _guiValues(self):
         buy_count, sell_count = 0, 0
         base_volume, quote_volume = 0.0, 0.0
+        current_price = self.pS.get()
         prices = self._calculate_prices(self.config.upper_bound,
                                         self.config.lower_bound,
                                         self.config.line_count)
         for price in prices:
             if price == self.pendingLine:
                 continue
-            side, volume = self._side_volume_of_line(price)
+
+            side = 'buy' if price < current_price else 'sell'
+            volume = self.config.base_volume_line
             if side == 'buy':
                 buy_count += 1
                 quote_volume += volume * price
@@ -106,8 +100,8 @@ class GridBot:
                 sell_count += 1
                 base_volume += volume
 
-        quote_volume = round(quote_volume, 3)
+        quote_volume = round(quote_volume, 2)
         return {'buy_count':buy_count,
                 'sell_count':sell_count,
                 'base_volume':base_volume,
-                'quote_volume':quote_volume,} | self.stats
+                'quote_volume':quote_volume,}

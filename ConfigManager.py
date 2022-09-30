@@ -13,7 +13,9 @@ class ConfigManager:
                                    'upper_bound':['s_upper_bound', 'upper_bound'],
                                    'lower_bound':['s_lower_bound', 'lower_bound'],
                                    'line_count':['s_line_count',],
-                                   'base_volume_line':['s_base_volume_line',],}
+                                   'base_volume_line':['s_base_volume_line',],
+                                   'upper_sl': ['s_upper_sl',],
+                                   }
 
     def _create_member_access(self):
         self.symbol = self.cp[self.profile]['symbol']
@@ -22,6 +24,7 @@ class ConfigManager:
         self.line_count = int(self.cp[self.profile]['line_count'])
         self.base_volume_line = float(self.cp[self.profile]['base_volume_line'])
         self.tick_size = min(8, abs(int(self.cp[self.profile]['tick_size'])))
+        self.upper_sl = float(self.cp[self.profile]['upper_sl'])
 
     def draw_to_window(self, window):
         for file_key, gui_keys in self.file_to_gui_fields.items():

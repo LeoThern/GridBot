@@ -18,6 +18,7 @@ layoutSettingsTab = [[sg.Text('Symbol: '), sg.Push(), sg.InputText(key='s_symbol
                      [sg.Text('Lower Bound: '), sg.Push(), sg.InputText(key='s_lower_bound')],
                      [sg.Text('Line Count: '), sg.Push(), sg.InputText(key='s_line_count')],
                      [sg.Text('Coin\'s per Line: '), sg.Push(), sg.InputText(key='s_base_volume_line')],
+                     [sg.Text('Upper SL (0 to turn off) '), sg.Push(), sg.InputText(key='s_upper_sl')],
                      [sg.Push(), sg.Button('Save'), sg.Push()], ]
 
 layoutStatsTab = [[sg.Push(), sg.Text('Buy\'s executed:'), sg.Text('', key='total_buys'), sg.Push()],
@@ -27,8 +28,8 @@ layoutStatsTab = [[sg.Push(), sg.Text('Buy\'s executed:'), sg.Text('', key='tota
 
 layout = [[sg.TabGroup([[sg.Tab('Main', layoutMainTab),
                          sg.Tab('Settings', layoutSettingsTab),
-                         sg.Tab('Stats', layoutStatsTab)]],
-                         tab_location='centertop'), ]]
+                         #sg.Tab('Stats', layoutStatsTab),
+                         ]], tab_location='centertop'), ]]
 
 
 def load_demo_values(window):
