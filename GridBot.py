@@ -52,6 +52,8 @@ class GridBot:
             if self.config.upper_sl > 0:
                 if self.pS.get() > self.config.upper_sl:
                     self.cancel()
+                    self.OM.limitBuy(self.config.base_volume_line * self.config.line_count,
+                                     self.config.upper_sl)
 
     def _replace_orders(self):
         for price in self.gridPrices:
