@@ -40,7 +40,7 @@ class OrderManager:
             return
         status = status_conversion[report['X']]
         id = report['i']
-        print(time_prefix(), f"{self.orders[id]['side'].upper()} Order Status: {status}")
+        print(time_prefix(), f"[!] {report['S']} Order at {report['p']}: {status}")
         self.orders[id]['status'] = status
 
     def _reload_client(self):
@@ -51,7 +51,7 @@ class OrderManager:
 
     def limitBuy(self, volume, price):
         self._reload_client()
-        print(time_prefix(), f"Trying to place Limit Buy for {volume} at {price}")
+        print(time_prefix(), f"[+] Trying to place Limit Buy for {volume} at {price}")
         order = self.client.order_limit_buy(symbol=self.symbol,
                                             quantity=volume,
                                             price=price)
@@ -64,7 +64,7 @@ class OrderManager:
 
     def limitSell(self, volume, price):
         self._reload_client()
-        print(time_prefix(), f"Trying to place Limit Sell for {volume} at {price}")
+        print(time_prefix(), f"[+] Trying to place Limit Sell for {volume} at {price}")
         order = self.client.order_limit_sell(symbol=self.symbol,
                                              quantity=volume,
                                              price=price)
