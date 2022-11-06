@@ -49,6 +49,12 @@ class OrderManager:
             self.client = Client(credentials['key'], credentials['secret'])
         self.client_creation_time = current_time
 
+    def _get_quote_balance(self, symbol):
+        self._reload_client()
+        quoteAsset = self.client.get_symbol_info(symbol)['quoteAsset']
+        data = self.client.get_asset_balance(quoteAsset)
+        return float(data['free'])
+
     def limitBuy(self, volume, price):
         self._reload_client()
         print(time_prefix(), f"[+] Trying to place Limit Buy for {volume} at {price}")
