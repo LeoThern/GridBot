@@ -29,6 +29,8 @@ class GridBot:
                                                  self.config.lower_bound,
                                                  self.config.line_count)
         quote_sum = sum([self.config.base_volume_line * price for price in self.gridPrices])
+        for price in self.gridPrices:
+            self._place_gridLine(price)
         self.gridPrices_lock.release()
 
     def cancel(self):
